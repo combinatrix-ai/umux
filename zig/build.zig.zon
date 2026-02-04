@@ -1,0 +1,14 @@
+.{
+    .name = .umux_ghostty_vt,
+    .version = "0.0.0",
+    .minimum_zig_version = "0.15.2",
+    .paths = .{""},
+    .fingerprint = 0x740429cf3cfc592a,
+    .dependencies = .{
+        .ghostty = .{
+            .path = "../vendor/ghostty",
+            .lazy = true,
+        },
+    },
+}
+

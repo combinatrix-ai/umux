@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build Ghostty VT Wasm
+        run: npm run build:ghostty-vt-wasm
+
+      - name: Sanity check Ghostty VT Wasm
+        run: |
+          test -s assets/umux-ghostty-vt.wasm
+          node -e "const fs=require('fs');const m=new WebAssembly.Module(fs.readFileSync('assets/umux-ghostty-vt.wasm'));const imports=WebAssembly.Module.imports(m);if(!imports.some(i=>i.module==='wasi_snapshot_preview1')){throw new Error('expected WASI imports');}const exports=WebAssembly.Module.exports(m);if(!exports.some(e=>e.name==='umux_vt_terminal_new')){throw new Error('expected umux_vt_* exports');}"
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Pack (verify artifacts included)
+        run: |
+          npm pack --silent
+          ls -la *.tgz
+          tar -tzf *.tgz | grep -q "package/assets/umux-ghostty-vt.wasm"

@@ -1,0 +1,5 @@
+{
+  "name": "umux",
+  "version": "0.0.1",
+  "description": "Terminal multiplexer for AI agents - run commands, manage interactive sessions, and watch processes"
+}

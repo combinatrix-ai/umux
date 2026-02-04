@@ -1,0 +1,83 @@
+{
+  "name": "@combinatrix-ai/umux",
+  "version": "0.0.1",
+  "description": "Agent-ready terminal multiplexer",
+  "type": "module",
+  "bin": {
+    "umux": "./dist/cli/bin.js",
+    "umux-mcp": "./dist/mcp/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "assets/umux-ghostty-vt.wasm",
+    "docs",
+    "examples",
+    "README.md",
+    "scripts"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "build:ghostty-vt-wasm": "./scripts/build-ghostty-vt-wasm.sh",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "bench:engine": "node ./scripts/bench/engine-vs-tmux.mjs",
+    "bench:logs": "node ./scripts/bench/logs-vs-tmux.mjs",
+    "bench:cat": "node ./scripts/bench/cat-throughput.mjs",
+    "test": "vitest run",
+    "test:local": "npm install && npm test",
+    "test:linux": "docker run --rm -v \"$PWD:/work\" -w /work node:20-bullseye bash -lc \"npm ci && npm test\"",
+    "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration.test.ts",
+    "test:e2e": "vitest run tests/e2e.test.ts",
+    "test:scenarios": "vitest run tests/scenarios.test.ts --config vitest.scenarios.config.ts",
+    "test:all": "npm run test && npm run test:integration && npm run test:e2e && npm run test:scenarios",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/headless": "^5.5.0",
+    "commander": "^12.0.0",
+    "hono": "^4.0.0",
+    "nanoid": "^5.0.0",
+    "node-pty": "^1.0.0",
+    "picocolors": "^1.1.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.11",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/combinatrix-ai/umux.git"
+  },
+  "keywords": [
+    "terminal",
+    "multiplexer",
+    "tmux",
+    "agent",
+    "cli",
+    "pty"
+  ],
+  "license": "MIT"
+}
