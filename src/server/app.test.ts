@@ -133,6 +133,38 @@ describe('Server App', () => {
       expect(data.lines.join('\n')).toContain('test output');
     });
 
+    it('GET /sessions/:id/history strips terminal control sequences by default', async () => {
+      const esc = '\u001b';
+      const session = await umux.spawn(
+        `printf ${esc}[?1049h${esc}[31mRED${esc}[0m${esc}[?1049l\\\\n`
+      );
+      await umux.waitFor(session.id, { exit: true, timeout: 5000 });
+
+      const res = await app.request(`/sessions/${session.id}/history`);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      const joined = data.lines.join('\n');
+      expect(joined).toContain('RED');
+      expect(joined).not.toContain(esc);
+
+      const colorRes = await app.request(`/sessions/${session.id}/history?format=color`);
+      expect(colorRes.status).toBe(200);
+      const colorData = await colorRes.json();
+      const colorJoined = colorData.lines.join('\n');
+      expect(colorJoined).toContain('RED');
+      expect(colorJoined).toContain(esc);
+      expect(colorJoined).toContain('[31m');
+      expect(colorJoined).not.toContain('[?1049h');
+
+      const rawRes = await app.request(`/sessions/${session.id}/history?format=raw`);
+      expect(rawRes.status).toBe(200);
+      const rawData = await rawRes.json();
+      const rawJoined = rawData.lines.join('\n');
+      expect(rawJoined).toContain(esc);
+      expect(rawJoined).toContain('[31m');
+      expect(rawJoined).toContain('[?1049h');
+    });
+
     it('GET /sessions/:id/history?tail=5 returns last 5 lines', async () => {
       const session = await umux.spawn('seq 1 10');
       await umux.waitFor(session.id, { exit: true, timeout: 5000 });

@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import { HookManager } from '../core/hooks.js';
 import type { WaitCondition } from '../core/index.js';
 import { Key, type Umux } from '../core/index.js';
+import { formatTerminalOutput } from '../core/terminal/sanitize.js';
 import type {
   CreateHookRequest,
   KillRequest,
@@ -204,6 +205,8 @@ export function createApp(umux: Umux, config: ServerConfig = {}) {
     }
 
     const stream = c.req.query('stream') ?? 'output';
+    const formatQuery = c.req.query('format') ?? 'text';
+    const format = formatQuery === 'raw' || formatQuery === 'color' ? formatQuery : 'text';
     const tail = c.req.query('tail');
     const head = c.req.query('head');
     const start = c.req.query('start');
@@ -219,7 +222,7 @@ export function createApp(umux: Umux, config: ServerConfig = {}) {
 
     const history = stream === 'input' ? session.inputHistory : session.history;
 
-    let lines: string[];
+    let content: string;
 
     if (search) {
       const matches = history.search(search);
@@ -230,15 +233,18 @@ export function createApp(umux: Umux, config: ServerConfig = {}) {
     }
 
     if (tail) {
-      lines = history.tail(parseInt(tail, 10)).split('\n');
+      content = history.tail(parseInt(tail, 10));
     } else if (head) {
-      lines = history.head(parseInt(head, 10)).split('\n');
+      content = history.head(parseInt(head, 10));
     } else if (start) {
       const endNum = end ? parseInt(end, 10) : undefined;
-      lines = history.slice(parseInt(start, 10), endNum).split('\n');
+      content = history.slice(parseInt(start, 10), endNum);
     } else {
-      lines = history.getAll().split('\n');
+      content = history.getAll();
     }
+
+    const formatted = formatTerminalOutput(content, format);
+    const lines = formatted.split('\n');
 
     return c.json({
       lines,

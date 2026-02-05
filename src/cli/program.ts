@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import pc from 'picocolors';
+import { formatTerminalOutput, type HistoryFormat } from '../core/terminal/sanitize.js';
 import { startServer } from '../server/index.js';
 import { createClient, type UmuxClient } from './client.js';
 import { parseKeySpec } from './keyspec.js';
@@ -769,6 +770,10 @@ Notes:
     .option('--all', 'Return all output (no default tail limit)')
     .option('--search <pattern>', 'Search in history')
     .option('--send-only', 'Show only input sent to the session')
+    .option('--format <format>', 'Output format (text|color|raw)', 'text')
+    .option('--text', 'Alias for --format text')
+    .option('--color', 'Alias for --format color (keeps colors only)')
+    .option('--raw', 'Alias for --format raw (unsafe: may break your terminal)')
     .action(async (sessionIdArg, options, cmd) => {
       const globalOpts = cmd.parent?.opts() ?? {};
       const client = await getClient(globalOpts);
@@ -783,11 +788,21 @@ Notes:
       }
 
       const stream = options.sendOnly ? 'input' : 'output';
+      const format: HistoryFormat = options.raw
+        ? 'raw'
+        : options.color
+          ? 'color'
+          : options.text
+            ? 'text'
+            : options.format === 'raw' || options.format === 'color'
+              ? options.format
+              : 'text';
 
       if (options.search) {
         const result = await client.searchHistory(sessionId, options.search, { stream });
         for (const m of result.matches) {
-          console.log(`${pc.dim(String(m.line))}:${m.text}`);
+          const text = format === 'raw' ? m.text : formatTerminalOutput(m.text, format);
+          console.log(`${pc.dim(String(m.line))}:${text}`);
         }
         return;
       }
@@ -802,7 +817,7 @@ Notes:
         historyOptions.tail = 100;
       }
 
-      const result = await client.getHistory(sessionId, { ...historyOptions, stream });
+      const result = await client.getHistory(sessionId, { ...historyOptions, stream, format });
       console.log(result.lines.join('\n'));
     });
 

@@ -5,6 +5,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Session, Umux } from '../core/index.js';
 import * as keys from '../core/keys.js';
+import { formatTerminalOutput } from '../core/terminal/sanitize.js';
 import {
   type CaptureParams,
   CaptureSchema,
@@ -255,13 +256,27 @@ export function registerTools(server: McpServer, umux: Umux): void {
     async (params: HistoryParams) => {
       const session = resolveSession(umux, params.session);
       const history = session.history;
+      const format = params.format === 'raw' || params.format === 'color' ? params.format : 'text';
 
       let content: string;
       let mode: string;
 
       if (params.search) {
         const matches = history.search(new RegExp(params.search, 'g'));
-        content = JSON.stringify(matches.slice(0, 100)); // Limit results
+        const limited = matches.slice(0, 100).map((m) => {
+          if (format === 'raw') return m;
+          return {
+            ...m,
+            text: formatTerminalOutput(m.text, format),
+            context: m.context
+              ? {
+                  before: formatTerminalOutput(m.context.before, format),
+                  after: formatTerminalOutput(m.context.after, format),
+                }
+              : undefined,
+          };
+        });
+        content = JSON.stringify(limited); // Limit results
         mode = 'search';
       } else if (params.tail !== undefined) {
         content = history.tail(params.tail);
@@ -275,6 +290,10 @@ export function registerTools(server: McpServer, umux: Umux): void {
       } else {
         content = history.tail(50); // Default: last 50 lines
         mode = 'tail(50)';
+      }
+
+      if (mode !== 'search' && format !== 'raw') {
+        content = formatTerminalOutput(content, format);
       }
 
       return {

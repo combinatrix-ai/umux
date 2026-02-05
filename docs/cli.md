@@ -185,12 +185,15 @@ These flags are supported by `spawn`, `send`, and `wait`:
 View session history (output by default).
 
 ```bash
-umux logs [session-id] [--tail <n> | --head <n> | --all] [--search <pattern>] [--send-only]
+umux logs [session-id] [--tail <n> | --head <n> | --all] [--search <pattern>] [--send-only] [--format text|color|raw]
 ```
 
 Notes:
 - Default output is the last 100 lines (`--tail 100`) to avoid dumping huge output to stdout in scripts and CI.
 - `--send-only` shows only input sent to the session (if enabled).
+- `--format` defaults to `text` (strips control sequences so `umux logs` won't trash your terminal after a TUI).
+  - `color` keeps SGR colors only (cursor moves / alt-screen / OSC, etc. are stripped).
+  - `raw` prints raw output (unsafe; can affect your terminal state).
 
 ### `umux capture`
 

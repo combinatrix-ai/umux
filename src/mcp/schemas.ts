@@ -77,6 +77,11 @@ export const HistorySchema = z.object({
   start: z.number().optional().describe('Start line (0-indexed) for slice'),
   end: z.number().optional().describe('End line (exclusive) for slice'),
   search: z.string().optional().describe('Search pattern (regex)'),
+  format: z
+    .enum(['text', 'color', 'raw'])
+    .optional()
+    .default('text')
+    .describe('Output format (text strips control sequences; color keeps SGR colors only)'),
 });
 
 // ============================================================================

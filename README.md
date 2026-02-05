@@ -223,6 +223,7 @@ umux logs --tail 50          # Last 50 lines
 umux logs --all              # All retained history
 umux logs --search "error"   # Search
 umux logs --send-only        # Audit what agent sent
+umux logs --format raw       # Raw output (unsafe; may affect your terminal)
 ```
 
 Note: `umux logs` defaults to the last 100 lines to avoid accidentally dumping huge output to stdout in scripts and CI.

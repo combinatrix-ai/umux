@@ -224,6 +224,7 @@ export function createClient(config: ClientConfig) {
         start?: number;
         end?: number;
         stream?: 'output' | 'input';
+        format?: 'text' | 'color' | 'raw';
       }
     ): Promise<HistoryResult> {
       const params = new URLSearchParams();
@@ -232,6 +233,7 @@ export function createClient(config: ClientConfig) {
       if (options?.start) params.set('start', String(options.start));
       if (options?.end) params.set('end', String(options.end));
       if (options?.stream) params.set('stream', options.stream);
+      if (options?.format) params.set('format', options.format);
 
       const query = params.toString();
       const path = `/sessions/${sessionId}/history${query ? `?${query}` : ''}`;
