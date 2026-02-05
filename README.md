@@ -2,10 +2,29 @@
 
 **Stateful shell sessions with an API — tmux, but for agents.**
 
-- Every blocking operation requires a timeout — no hanging forever
-- No polling loops or fragile timing hacks — describe what you're waiting for
-- No unbounded stdout — won't fill your context unexpectedly
-- No interference between human and agent — work separately
+- Every blocking operation requires a timeout — **no hanging forever**
+- No polling loops or fragile timing hacks — **describe what you're waiting for**
+- No unbounded stdout — **won't fill your context unexpectedly**
+- No interference between human and agent — **work separately**
+
+```bash
+# 1) Spawn a shell
+umux spawn bash
+
+# 2) Run commands
+umux send "export FOO=bar" --enter
+umux send "echo \$FOO" --enter # stateful!
+
+# 3) Wait a long running command
+umux send "npm install" --enter
+umux wait --block-until-ready --timeout 5000
+
+# 4) Read output
+umux logs --tail 20
+
+# 5) Clean up
+umux rm
+```
 
 **Example: Getting Claude Usage from TUI** 43% shorter, 16% faster — actually written by an agent
 <table>
@@ -90,38 +109,43 @@ umux send --key Tab \
 
 ---
 
-## The problem
+## The problem (why not use XXXX?)
 
-### The problem with exec()
+### What’s wrong with naive `exec()` (or Expect)?
 
-When agents run shell commands, raw `exec()` has issues:
-- **Can hang forever** — no timeout, blocks indefinitely
-- **Output can explode** — stdout fills memory
-- **No interactivity** — can't handle prompts, TUIs, REPLs
+When an agent runs shell commands by simply spawning a process, you often run into:
 
-### The problem with tmux
+- **Hangs** — without careful timeouts, a command can block forever
+- **Unbounded output** — stdout/stderr can grow without limits unless you stream and cap it
+- **No interactivity** — hard to handle prompts, TUIs, or REPLs reliably
 
-So agents use tmux. But tmux is built for humans:
-- **Keyboard capture** — `Ctrl-b` taken, input gets intercepted
-- **Shared UI state** — panes, windows, scroll position conflict with human
-- **Scrollback limits** — history truncated, designed for human eyes
-- **Poll to wait** — no "wait until done" API, must poll + sleep + guess
+Expect is great for fixed, well-understood prompts, but it requires you to know the conversation flow in advance.
 
-We humans love tmux but it seems difficult for agents to work smoothly with tmux
+### What’s wrong with tmux (or screen)?
+
+A common workaround is to run commands inside tmux. But tmux is built for humans:
+
+- **Keybindings get in the way** — prefixes like `Ctrl-b` can intercept input
+- **Shared UI state** — panes, windows, and scroll position are designed for a single user
+- **Limited scrollback** — history is for human reading, not programmatic inspection
+- **Fragile polling loop** — you end up polling with sleep loops and guesswork
+
+tmux is great for humans, but it’s awkward to drive programmatically.
 
 ### umux: shell sessions for agents
 
 umux is a command execution environment designed for agents from the ground up:
+
 - **No keybindings** — all input goes straight to the shell
 - **No shared state** — observe sessions without interfering
-- **Queryable history** — searchable in-memory history + optional JSONL disk logs
+- **Queryable history** — searchable in-memory history + optional JSONL logs
 - **Declarative waiting** — `wait --block-until-*`, not poll loops
-- **Mandatory timeouts** — never hang forever
-
+- **Timeouts by default** — commands can’t hang forever
+- **Bounded output by default** — output is capped unless you explicitly opt in
 
 ### tmux vs umux
 
-tmux is a great TUI for humans. But Agents need an API.
+tmux is a great TUI for humans. But agents need an API.
 
 | | tmux | umux |
 |---|------|------|
@@ -138,33 +162,6 @@ Plus: umux uses libghostty-vt (WASM) for terminal state and capture. In practice
 
 ---
 
-## FAQ
-
-### Why not just use screen/expect/pexpect?
-
-**The problem with `exec()` (or expect)**
-
-When agents run shell commands, raw `exec()` has issues:
-- **Can hang forever** — no timeout, blocks indefinitely
-- **Output can explode** — stdout fills memory
-- **No interactivity** — can't handle prompts, TUIs, REPLs
-
-Tools like `expect` and `pexpect` help with interactivity, but still require manual timeout handling and don't provide persistent sessions.
-
-**The problem with tmux (or screen)**
-
-So agents use tmux. But tmux is built for humans:
-- **Keyboard capture** — `Ctrl-b` taken, input gets intercepted
-- **Shared UI state** — panes, windows, scroll position conflict with human
-- **Scrollback limits** — history truncated, designed for human eyes
-- **Poll to wait** — no "wait until done" API, must poll + sleep + guess
-
-We humans love tmux, but it's difficult for agents to work smoothly with it.
-
-**umux** provides the best of both worlds: persistent interactive sessions (like tmux) with a declarative API (unlike tmux).
-
----
-
 ## Installation
 
 Requirements
@@ -176,31 +173,6 @@ npm install -g @combinatrix-ai/umux
 ```
 
 Then, ask your agent to "use `umux` instead of tmux."
-
----
-
-## Quick Start
-
-```bash
-# Spawn a shell
-umux spawn bash
-
-# Run commands (state is preserved)
-umux send "cd /project && export FOO=bar" --enter
-umux wait --block-until-ready --timeout 5000
-
-umux send "npm install" --enter
-umux wait --block-until-ready --timeout 60000
-
-umux send "npm test" --enter
-umux wait --block-until-ready --timeout 60000
-
-# Check output
-umux logs --tail 20
-
-# Clean up
-umux rm
-```
 
 ---
 
