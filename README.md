@@ -138,6 +138,33 @@ Plus: umux uses libghostty-vt (WASM) for terminal state and capture. In practice
 
 ---
 
+## FAQ
+
+### Why not just use screen/expect/pexpect?
+
+**The problem with `exec()` (or expect)**
+
+When agents run shell commands, raw `exec()` has issues:
+- **Can hang forever** — no timeout, blocks indefinitely
+- **Output can explode** — stdout fills memory
+- **No interactivity** — can't handle prompts, TUIs, REPLs
+
+Tools like `expect` and `pexpect` help with interactivity, but still require manual timeout handling and don't provide persistent sessions.
+
+**The problem with tmux (or screen)**
+
+So agents use tmux. But tmux is built for humans:
+- **Keyboard capture** — `Ctrl-b` taken, input gets intercepted
+- **Shared UI state** — panes, windows, scroll position conflict with human
+- **Scrollback limits** — history truncated, designed for human eyes
+- **Poll to wait** — no "wait until done" API, must poll + sleep + guess
+
+We humans love tmux, but it's difficult for agents to work smoothly with it.
+
+**umux** provides the best of both worlds: persistent interactive sessions (like tmux) with a declarative API (unlike tmux).
+
+---
+
 ## Installation
 
 Requirements
