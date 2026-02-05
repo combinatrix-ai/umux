@@ -910,10 +910,35 @@ Notes:
     .argument('[session-id]', 'Session ID or name (optional if only one session)')
     .option('--id <session-id>', 'Session ID')
     .option('--name <name>', 'Session name')
+    .option('--all', 'Remove all sessions (kills alive sessions first)')
     .option('--exited', 'Remove all exited sessions')
     .action(async (sessionIdArg, options, cmd) => {
       const globalOpts = cmd.parent?.opts() ?? {};
       const client = await getClient(globalOpts);
+
+      if (options.all && options.exited) {
+        console.error(pc.red('Options --all and --exited are mutually exclusive.'));
+        process.exit(1);
+      }
+
+      // Remove all sessions (concurrent)
+      if (options.all) {
+        const sessions = await client.listSessions();
+        await Promise.all(
+          sessions.map(async (session) => {
+            try {
+              if (session.isAlive) {
+                await gracefulKill(client, session.id);
+              }
+            } catch {
+              // Ignore kill errors; still attempt delete
+            }
+            await client.deleteSession(session.id).catch(() => {});
+          })
+        );
+        console.log(`Removed ${sessions.length} session(s)`);
+        return;
+      }
 
       // Remove all exited sessions (concurrent)
       if (options.exited) {

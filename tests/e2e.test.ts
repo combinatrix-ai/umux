@@ -234,6 +234,28 @@ describe('E2E: CLI', () => {
     await runCli(['rm', session2]);
   });
 
+  it('rm --all removes all sessions', async () => {
+    // Spawn sessions
+    const session1 = (await runCli(['spawn', 'cat'])).stdout.trim();
+    const session2 = (await runCli(['spawn', 'cat'])).stdout.trim();
+
+    // Make one exited
+    await runCli(['kill', session1]);
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Remove everything (kills alive sessions first)
+    const rmResult = await runCli(['rm', '--all']);
+    expect(rmResult.exitCode).toBe(0);
+    expect(rmResult.stdout).toContain('Removed');
+
+    // Verify both are gone
+    const lsAfter = await runCli(['ls', '--all', '--json']);
+    const sessionsAfter = JSON.parse(lsAfter.stdout);
+    const ids = sessionsAfter.map((s: { id: string }) => s.id);
+    expect(ids).not.toContain(session1);
+    expect(ids).not.toContain(session2);
+  });
+
   it('ls defaults to active sessions, with --all/--exited to toggle', async () => {
     const sessionId = (await runCli(['spawn', 'cat'])).stdout.trim();
 

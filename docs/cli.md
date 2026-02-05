@@ -213,7 +213,7 @@ umux status [session-id] [--is-ready] [--is-idle <ms>] [--json]
 Remove a session (kills it first if alive).
 
 ```bash
-umux rm [session-id] [--exited]
+umux rm [session-id] [--all|--exited]
 ```
 
 ### `umux kill`
