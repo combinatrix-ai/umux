@@ -5,8 +5,9 @@
  */
 
 import { spawn } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startServer } from '../src/server/index.js';
@@ -21,12 +22,13 @@ const DEFAULT_CLI_TIMEOUT = isCI ? 30000 : 10000;
 
 function runCli(
   args: string[],
-  options: { timeout?: number; env?: Record<string, string | undefined> } = {}
+  options: { timeout?: number; env?: Record<string, string | undefined>; cwd?: string } = {}
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve, reject) => {
     const timeout = options.timeout ?? DEFAULT_CLI_TIMEOUT;
     const proc = spawn('node', [CLI_PATH, ...args], {
       timeout,
+      cwd: options.cwd,
       env: { ...process.env, NO_COLOR: '1', ...(options.env ?? {}) },
     });
 
@@ -116,6 +118,37 @@ describe('E2E: CLI', () => {
 
     // Clean up
     await runCli(['kill', data.id]);
+  });
+
+  it('spawn defaults to caller cwd (not server cwd)', async () => {
+    const socketPath = join(tmpdir(), `umux-e2e-${Date.now()}-${Math.random()}.sock`);
+    const dirA = await mkdtemp(join(tmpdir(), 'umux-e2e-dirA-'));
+    const dirB = await mkdtemp(join(tmpdir(), 'umux-e2e-dirB-'));
+
+    try {
+      // Start server from dirA (auto-start via any command)
+      await runCli(['-S', socketPath, 'ls', '--json'], { cwd: dirA });
+
+      // Spawn from dirB; session cwd should be dirB
+      const spawnRes = await runCli(['-S', socketPath, 'spawn', '--json'], { cwd: dirB });
+      expect(spawnRes.exitCode).toBe(0);
+      const spawned = JSON.parse(spawnRes.stdout) as { id: string; pid: number };
+      expect(spawned.id).toMatch(/^sess-/);
+
+      const statusRes = await runCli(
+        ['-S', socketPath, 'status', '--id', spawned.id, '--json'],
+        { cwd: dirA }
+      );
+      expect(statusRes.exitCode).toBe(0);
+      const status = JSON.parse(statusRes.stdout) as { cwd?: string };
+      expect(status.cwd).toBe(resolve(dirB));
+
+      await runCli(['-S', socketPath, 'kill', spawned.id]);
+      await runCli(['-S', socketPath, 'rm', spawned.id]);
+    } finally {
+      await rm(dirA, { recursive: true, force: true });
+      await rm(dirB, { recursive: true, force: true });
+    }
   });
 
   it('sends input and waits for ready', async () => {

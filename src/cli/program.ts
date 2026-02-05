@@ -484,7 +484,7 @@ export function createProgram(): Command {
 
       const session = await client.spawn(program ?? '', {
         name: options.name,
-        cwd: options.cwd,
+        cwd: resolve(options.cwd ?? process.cwd()),
         env: options.env,
         cols: options.cols ? parseInt(options.cols, 10) : undefined,
         rows: options.rows ? parseInt(options.rows, 10) : undefined,
