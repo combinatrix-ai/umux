@@ -8,6 +8,8 @@
 - No interference between human and agent — **work separately**
 
 ```bash
+npm install -g @combinatrix-ai/umux
+
 # 1) Spawn a shell
 umux spawn bash
 
